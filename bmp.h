@@ -8,6 +8,7 @@ struct pixel_data {
     u_int8_t r;
 };
 
+#pragma pack(push, 1) // Use no padding at all
 struct bmp_file {
     struct bmp_header {
         u_int16_t id;
@@ -32,6 +33,7 @@ struct bmp_file {
 
     struct pixel_data* data;
 };
+#pragma pack(pop)
 
 enum BMP_ERROR {
     BMP_FILE_NULL = 1,
@@ -39,21 +41,20 @@ enum BMP_ERROR {
     BMP_DATA_NULL,
     BHE_INVALID_SIGNATURE,
     BHE_SIZE_ZERO,
-    DHE_INVALID_FORMAT
+    DHE_INVALID_FORMAT,
+    BMP_EVEN_FILTER_SIZE
 };
+
+int bmp_load(const char* file_name, struct bmp_file* s_bmp_file);
+
+void bmp_free(struct bmp_file* s_bmp_file);
+
+struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y);
+
+void set_pixel_at(struct bmp_file* bmp_file, struct pixel_data* new_pixel, int x, int y);
 
 uint bmp_width(struct bmp_file* s_bmp_file);
 
 uint bmp_height(struct bmp_file* s_bmp_file);
 
-int bmp_read_header(FILE* file, struct bmp_header* bmp_header);
-
-void bmp_flip(struct bmp_file* bmp_file);
-
-int bmp_read_pixel_data(FILE* file, struct bmp_file* bmp_file);
-
-int bmp_read_dib_header(FILE* file, struct dib_header* dib_header);
-
-int bmp_load(const char* file_name, struct bmp_file* s_bmp_file);
-
-void bmp_free(struct bmp_file* s_bmp_file);
+uint bmp_save(const char* file_name, struct bmp_file* s_bmp_file);
