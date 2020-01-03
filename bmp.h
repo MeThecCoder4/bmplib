@@ -2,14 +2,16 @@
 #include <stdio.h>
 
 // BGR24 pixel BMP data model
+#pragma pack(push, 1) // Use no padding at all
 struct pixel_data {
     u_int8_t b;
     u_int8_t g;
     u_int8_t r;
 };
+#pragma pack(pop)
 
-#pragma pack(push, 1) // Use no padding at all
 struct bmp_file {
+    #pragma pack(push, 1)
     struct bmp_header {
         u_int16_t id;
         uint file_size;
@@ -30,13 +32,14 @@ struct bmp_file {
         uint palette_colors_number;
         uint important_colors;
     } s_dib_header;
+    #pragma pack(pop)
 
     struct pixel_data* data;
 };
-#pragma pack(pop)
 
 enum BMP_ERROR {
     BMP_FILE_NULL = 1,
+    BMP_NULL_STRUCT,
     BMP_MEMERROR,
     BMP_DATA_NULL,
     BHE_INVALID_SIGNATURE,
@@ -51,10 +54,14 @@ void bmp_free(struct bmp_file* s_bmp_file);
 
 struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y);
 
-void set_pixel_at(struct bmp_file* bmp_file, struct pixel_data* new_pixel, int x, int y);
+void bmp_set_pixel_at(struct bmp_file* bmp_file, struct pixel_data* new_pixel, int x, int y);
 
 uint bmp_width(struct bmp_file* s_bmp_file);
 
 uint bmp_height(struct bmp_file* s_bmp_file);
 
 uint bmp_save(const char* file_name, struct bmp_file* s_bmp_file);
+
+int bmp_resize(struct bmp_file* bmp_file, int32_t width, int32_t height);
+
+int bmp_init(struct bmp_file* bmp_file, int32_t width, int32_t height);
