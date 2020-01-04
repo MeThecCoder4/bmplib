@@ -45,7 +45,6 @@ enum BMP_ERROR {
     BHE_INVALID_SIGNATURE,
     BHE_SIZE_ZERO,
     DHE_INVALID_FORMAT,
-    BMP_EVEN_FILTER_SIZE
 };
 
 int bmp_load(const char* file_name, struct bmp_file* s_bmp_file);
@@ -65,3 +64,5 @@ uint bmp_save(const char* file_name, struct bmp_file* s_bmp_file);
 int bmp_resize(struct bmp_file* bmp_file, int32_t width, int32_t height);
 
 int bmp_init(struct bmp_file* bmp_file, int32_t width, int32_t height);
+
+void bmp_negative_filter(struct bmp_file* bmp_file);

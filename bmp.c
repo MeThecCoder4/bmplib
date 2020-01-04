@@ -17,7 +17,11 @@ int bmp_is_id_valid(const struct bmp_header* bmp_header);
 
 void bmp_write_clean(FILE* file, struct bmp_file* bmp_file);
 
-int bmp_allocate_data(struct bmp_file* bmp_file, int32_t width, int32_t height);
+int bmp_allocate_data(struct pixel_data** data_ptr, int32_t width, int32_t height);
+
+struct pixel_data bmp_median(const struct bmp_file* bmp_file, int32_t x, int32_t y);
+
+int bmp_asc_comparator(const void* a, const void* b);
 
 uint bmp_width(struct bmp_file* s_bmp_file) {
     return s_bmp_file->s_dib_header.bitmap_width;
@@ -45,11 +49,11 @@ int bmp_read_header(FILE* file, struct bmp_header* bmp_header) {
     return bmp_header->pixel_data_offset == 0;
 }
 
-int bmp_allocate_data(struct bmp_file* bmp_file, int32_t width, int32_t height) {
+int bmp_allocate_data(struct pixel_data** data_ptr, int32_t width, int32_t height) {
     long bmp_size = width * height;
-    bmp_file->data = malloc(sizeof(struct pixel_data) * bmp_size);
+    (*data_ptr) = malloc(sizeof(struct pixel_data) * bmp_size);
 
-    if(bmp_file->data == NULL)
+    if((*data_ptr) == NULL)
         return BMP_MEMERROR;
 
     return 0;
@@ -111,7 +115,7 @@ int bmp_load(const char* file_name, struct bmp_file* s_bmp_file) {
     if((status = bmp_read_dib_header(file, &s_bmp_file->s_dib_header)) != 0)
         return status;
 
-    if(bmp_allocate_data(s_bmp_file, bmp_width(s_bmp_file), bmp_height(s_bmp_file)))
+    if(bmp_allocate_data(&s_bmp_file->data, bmp_width(s_bmp_file), bmp_height(s_bmp_file)))
         return BMP_MEMERROR;
     
     if((status = bmp_read_pixel_data(file, s_bmp_file)) != 0)
@@ -130,7 +134,7 @@ void bmp_free(struct bmp_file* s_bmp_file) {
 
 struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y) {
     if(bmp_file && x >= 0 && y >= 0)
-        return bmp_file->data[y * bmp_height(bmp_file) + x];
+        return bmp_file->data[x * bmp_height(bmp_file) + y];
     
     struct pixel_data empty;
     memset(&empty, 0, sizeof(struct pixel_data));
@@ -163,7 +167,7 @@ int bmp_resize(struct bmp_file* bmp_file, int32_t width, int32_t height) {
 int bmp_init(struct bmp_file* bmp_file, int32_t width, int32_t height) {
     memset(bmp_file, 0, sizeof(struct bmp_file));
 
-    if(bmp_allocate_data(bmp_file, width, height))
+    if(bmp_allocate_data(&bmp_file->data, width, height))
         return BMP_MEMERROR;
 
     bmp_file->s_dib_header.bitmap_width = width;
@@ -246,4 +250,19 @@ uint bmp_save(const char* file_name, struct bmp_file* s_bmp_file) {
 
     fclose(file);
     return 0;
+}
+
+void bmp_negative_filter(struct bmp_file* bmp_file) {
+    if(bmp_file && bmp_file->data) {
+        for(int i = 0; i < bmp_height(bmp_file); i++) {
+            for(int j = 0; j < bmp_width(bmp_file); j++) {
+                struct pixel_data current = pixel_at(bmp_file, j, i);
+                struct pixel_data new_color = {255 - current.b,
+                                        255 - current.g,
+                                        255 - current.r};
+
+                bmp_set_pixel_at(bmp_file, &new_color, j, i);
+            }
+        }
+    }
 }
