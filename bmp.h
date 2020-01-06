@@ -1,5 +1,7 @@
+#ifndef BMP_H
+#define BMP_H
+
 #include <sys/types.h>
-#include <stdio.h>
 
 // BGR24 pixel BMP data model
 #pragma pack(push, 1) // Use no padding at all
@@ -51,7 +53,7 @@ int bmp_load(const char* file_name, struct bmp_file* s_bmp_file);
 
 void bmp_free(struct bmp_file* s_bmp_file);
 
-struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y);
+struct pixel_data bmp_pixel_at(struct bmp_file* bmp_file, int x, int y);
 
 void bmp_set_pixel_at(struct bmp_file* bmp_file, struct pixel_data* new_pixel, int x, int y);
 
@@ -61,8 +63,8 @@ uint bmp_height(struct bmp_file* s_bmp_file);
 
 uint bmp_save(const char* file_name, struct bmp_file* s_bmp_file);
 
-int bmp_resize(struct bmp_file* bmp_file, int32_t width, int32_t height);
-
 int bmp_init(struct bmp_file* bmp_file, int32_t width, int32_t height);
 
 void bmp_negative_filter(struct bmp_file* bmp_file);
+
+#endif
