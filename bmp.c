@@ -43,7 +43,7 @@ int bmp_read_header(FILE* file, struct bmp_header* bmp_header) {
     if(bmp_is_id_valid(bmp_header))
         return BHE_INVALID_SIGNATURE;
 
-    if(bmp_header->file_size == 0)
+    if(bmp_header->file_size == 0) 
         return BHE_SIZE_ZERO;
 
     return bmp_header->pixel_data_offset == 0;
