@@ -23,6 +23,8 @@ struct pixel_data bmp_median(const struct bmp_file* bmp_file, int32_t x, int32_t
 
 int bmp_asc_comparator(const void* a, const void* b);
 
+int32_t bmp_proper_sl_length(const int32_t bmp_width);
+
 uint bmp_width(struct bmp_file* s_bmp_file) {
     return s_bmp_file->s_dib_header.bitmap_width;
 }
@@ -67,6 +69,23 @@ int bmp_is_id_valid(const struct bmp_header* bmp_header) {
     return 0;
 }
 
+// This function returns the closest scan line length in bytes
+int32_t bmp_proper_sl_length(const int32_t bmp_width) {
+    int32_t actual_length = sizeof(struct pixel_data) * bmp_width;
+
+    // Find the closest length divisible by 4
+    while(actual_length % 4 != 0) {
+        actual_length++;
+    }
+
+    return actual_length;
+}
+
+/* This function works by firstly reading all pixel data into a temporary variable.
+   It is done, because reading from disk is the most time consuming process,
+   so we want to do it in one fread() call. Pay attention that there is also padding included
+   and that's why we need to get the real pixel data out of the temporary data. */
+
 int bmp_read_pixel_data(FILE* file, struct bmp_file* bmp_file) {
     if(file == NULL)
         return BMP_FILE_NULL;
@@ -74,17 +93,35 @@ int bmp_read_pixel_data(FILE* file, struct bmp_file* bmp_file) {
     if(bmp_file->data == NULL)
         return BMP_DATA_NULL;
     
+    // Move to the beginning of pixel data
     fseek(file, bmp_file->s_header.pixel_data_offset, SEEK_SET);
-    struct pixel_data* tmp = bmp_file->data;
-
-    // Calculate an address of the pixel data block's end
-    struct pixel_data* data_block_end
-           = bmp_file->data + sizeof(struct pixel_data)
-            * (bmp_width(bmp_file) * bmp_height(bmp_file));
+    int32_t scan_line_byte_length = bmp_proper_sl_length(bmp_file->s_dib_header.bitmap_width);
+    struct pixel_data* tmp = NULL;
+    bmp_file->scan_line_byte_length = scan_line_byte_length;
     
-    long number_of_structs = (data_block_end - tmp) / 3;
-    fread(&*tmp, sizeof(struct pixel_data), number_of_structs, file);
-    return 0;
+    if(bmp_allocate_data(&tmp, scan_line_byte_length, bmp_height(bmp_file)))
+        return BMP_MEMERROR;
+
+    // Read temporary data with padding
+    int32_t data_with_padding_byte_length
+     = scan_line_byte_length * bmp_height(bmp_file);
+    int32_t pixels_num_with_padding = data_with_padding_byte_length / sizeof(struct pixel_data);
+    fread(tmp, sizeof(struct pixel_data), pixels_num_with_padding,file);
+
+    // Start reorganizing data from the last line
+    struct pixel_data* current_line
+     = tmp + pixels_num_with_padding - (scan_line_byte_length / sizeof(struct pixel_data));
+    struct pixel_data* tmp2 = bmp_file->data;
+    int32_t actual_data_line_byte_length = bmp_width(bmp_file) * sizeof(struct pixel_data);
+
+    while(current_line >= tmp) {
+        memcpy(tmp2, current_line, actual_data_line_byte_length);
+        tmp2 += actual_data_line_byte_length / sizeof(struct pixel_data);
+        current_line -= scan_line_byte_length / sizeof(struct pixel_data);
+    }
+    
+    free(tmp);
+    return 0; 
 }
 
 int bmp_read_dib_header(FILE* file, struct dib_header* dib_header) {
@@ -134,7 +171,7 @@ void bmp_free(struct bmp_file* s_bmp_file) {
 
 struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y) {
     if(bmp_file && x >= 0 && y >= 0)
-        return bmp_file->data[x * bmp_height(bmp_file) + y];
+        return bmp_file->data[y * bmp_width(bmp_file) + x];
     
     struct pixel_data empty;
     memset(&empty, 0, sizeof(struct pixel_data));
@@ -143,7 +180,7 @@ struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y) {
 
 void bmp_set_pixel_at(struct bmp_file* bmp_file, struct pixel_data* new_pixel, int x, int y) {
     if(bmp_file && new_pixel && x >= 0 && y >= 0)
-        memcpy(&bmp_file->data[x * bmp_height(bmp_file) + y], &*new_pixel, sizeof(struct pixel_data));
+        memcpy(&bmp_file->data[y * bmp_width(bmp_file) + x], &*new_pixel, sizeof(struct pixel_data));
 }
 
 int bmp_resize(struct bmp_file* bmp_file, int32_t width, int32_t height) {
@@ -202,8 +239,8 @@ void bmp_write_clean(FILE* file, struct bmp_file* bmp_file) {
         dib_header.bi_rgb = 0;
         dib_header.raw_bitmap_data_size = bmp_file->s_dib_header.bitmap_width *
                                     bmp_file->s_dib_header.bitmap_height * 3;
-        dib_header.print_resolution_h = 2835; 
-        dib_header.print_resolution_v = 2835;
+        dib_header.print_resolution_h = 0; 
+        dib_header.print_resolution_v = 0;
         dib_header.palette_colors_number = 0;
         dib_header.important_colors = 0; // All important       
 

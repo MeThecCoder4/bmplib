@@ -37,6 +37,8 @@ struct bmp_file {
     #pragma pack(pop)
 
     struct pixel_data* data;
+    int32_t scan_line_byte_length;
+    int32_t actual_data_line_length;
 };
 
 enum BMP_ERROR {
