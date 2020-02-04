@@ -38,7 +38,7 @@ struct bmp_file {
 
     struct pixel_data* data;
     int32_t scan_line_byte_length;
-    int32_t actual_data_line_length;
+    int32_t actual_data_line_byte_length;
 };
 
 enum BMP_ERROR {

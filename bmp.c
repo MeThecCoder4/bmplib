@@ -25,6 +25,8 @@ int bmp_asc_comparator(const void* a, const void* b);
 
 int32_t bmp_proper_sl_length(const int32_t bmp_width);
 
+struct pixel_data* bmp_reorganize_for_saving(const struct bmp_file* bmp_file);
+
 uint bmp_width(struct bmp_file* s_bmp_file) {
     return s_bmp_file->s_dib_header.bitmap_width;
 }
@@ -113,6 +115,7 @@ int bmp_read_pixel_data(FILE* file, struct bmp_file* bmp_file) {
      = tmp + pixels_num_with_padding - (scan_line_byte_length / sizeof(struct pixel_data));
     struct pixel_data* tmp2 = bmp_file->data;
     int32_t actual_data_line_byte_length = bmp_width(bmp_file) * sizeof(struct pixel_data);
+    bmp_file->actual_data_line_byte_length = actual_data_line_byte_length;
 
     while(current_line >= tmp) {
         memcpy(tmp2, current_line, actual_data_line_byte_length);
@@ -169,7 +172,7 @@ void bmp_free(struct bmp_file* s_bmp_file) {
     }
 }
 
-struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y) {
+struct pixel_data bmp_pixel_at(struct bmp_file* bmp_file, int x, int y) {
     if(bmp_file && x >= 0 && y >= 0)
         return bmp_file->data[y * bmp_width(bmp_file) + x];
     
@@ -181,24 +184,6 @@ struct pixel_data pixel_at(struct bmp_file* bmp_file, int x, int y) {
 void bmp_set_pixel_at(struct bmp_file* bmp_file, struct pixel_data* new_pixel, int x, int y) {
     if(bmp_file && new_pixel && x >= 0 && y >= 0)
         memcpy(&bmp_file->data[y * bmp_width(bmp_file) + x], &*new_pixel, sizeof(struct pixel_data));
-}
-
-int bmp_resize(struct bmp_file* bmp_file, int32_t width, int32_t height) {
-    if(bmp_file) {
-        bmp_file->s_dib_header.bitmap_width = width;
-        bmp_file->s_dib_header.bitmap_height = height;
-        
-        struct pixel_data* tmp_data = realloc(bmp_file->data,
-                                     sizeof(struct pixel_data) * width * height);
-
-        if(tmp_data == NULL)
-            return BMP_MEMERROR;
-
-        bmp_file->data = tmp_data;                                     
-        return 0;
-    }
-
-    return BMP_NULL_STRUCT;
 }
 
 int bmp_init(struct bmp_file* bmp_file, int32_t width, int32_t height) {
@@ -246,19 +231,36 @@ void bmp_write_clean(FILE* file, struct bmp_file* bmp_file) {
 
         memcpy(&bmp_file->s_dib_header, &dib_header, sizeof(struct dib_header));
         fwrite(&bmp_file->s_dib_header, sizeof(struct dib_header), 1, file);
-
-        // Write pixel data
-        for(long i = bmp_file->s_dib_header.bitmap_height - 1; i >= 0; i--) {
-            for(long j = 0; j < bmp_file->s_dib_header.bitmap_width; j++) {
-                fwrite(&bmp_file->data[i * bmp_file->s_dib_header.bitmap_height + j].b, sizeof(u_int8_t),
-                        1, file);
-                fwrite(&bmp_file->data[i * bmp_file->s_dib_header.bitmap_height + j].g, sizeof(u_int8_t),
-                        1, file);
-                fwrite(&bmp_file->data[i * bmp_file->s_dib_header.bitmap_height + j].r, sizeof(u_int8_t),
-                        1, file);
-            }   
-        }
     }
+}
+
+struct pixel_data* bmp_reorganize_for_saving(const struct bmp_file* bmp_file) {
+    if(bmp_file == NULL)
+        return NULL;
+    
+    struct pixel_data* tmp = NULL;
+
+    if(bmp_allocate_data(&tmp, bmp_file->scan_line_byte_length,
+                               bmp_height((struct bmp_file*) bmp_file)))
+        return NULL;
+                             
+    struct pixel_data* data = bmp_file->data;
+    struct pixel_data* current_line
+     = tmp + (((bmp_file->scan_line_byte_length * bmp_height((struct bmp_file*) bmp_file)) - bmp_file->scan_line_byte_length)
+           / sizeof(struct pixel_data));
+
+    // Filling data with zeros first to ensure padding - this one is important,
+    // there could be trash values otherwise
+    memset(tmp, 0, bmp_file->scan_line_byte_length * bmp_height((struct bmp_file*) bmp_file));
+
+    while(current_line >= tmp) {
+        memcpy(current_line, data, bmp_file->actual_data_line_byte_length);
+        current_line -= bmp_file->scan_line_byte_length / sizeof(struct pixel_data);
+        data += bmp_file->actual_data_line_byte_length / sizeof(struct pixel_data);
+    }
+
+    // At this point the data has been reorganized for save operation
+    return tmp;
 }
 
 uint bmp_save(const char* file_name, struct bmp_file* s_bmp_file) {
@@ -273,19 +275,14 @@ uint bmp_save(const char* file_name, struct bmp_file* s_bmp_file) {
     else {
         fwrite(&s_bmp_file->s_header, sizeof(struct bmp_header), 1, file);
         fwrite(&s_bmp_file->s_dib_header, sizeof(struct dib_header), 1, file);
-        long bmp_size = bmp_width(s_bmp_file) * bmp_height(s_bmp_file);
-
-        for(long i = 0; i < bmp_size; i++) {
-            fwrite(&s_bmp_file->data[i].b, sizeof(u_int8_t),
-                        1, file);
-            fwrite(&s_bmp_file->data[i].g, sizeof(u_int8_t),
-                        1, file);
-            fwrite(&s_bmp_file->data[i].r, sizeof(u_int8_t),
-                        1, file);
-        }
     }
 
+    struct pixel_data* reorganized_data = bmp_reorganize_for_saving(s_bmp_file);
+    fwrite(reorganized_data, sizeof(struct pixel_data),
+           (s_bmp_file->scan_line_byte_length * bmp_height(s_bmp_file)) / sizeof(struct pixel_data), file);
+
     fclose(file);
+    free(reorganized_data);
     return 0;
 }
 
@@ -293,10 +290,10 @@ void bmp_negative_filter(struct bmp_file* bmp_file) {
     if(bmp_file && bmp_file->data) {
         for(int i = 0; i < bmp_height(bmp_file); i++) {
             for(int j = 0; j < bmp_width(bmp_file); j++) {
-                struct pixel_data current = pixel_at(bmp_file, j, i);
+                struct pixel_data current = bmp_pixel_at(bmp_file, j, i);
                 struct pixel_data new_color = {255 - current.b,
-                                        255 - current.g,
-                                        255 - current.r};
+                                               255 - current.g,
+                                               255 - current.r};
 
                 bmp_set_pixel_at(bmp_file, &new_color, j, i);
             }
