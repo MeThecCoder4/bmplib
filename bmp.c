@@ -19,13 +19,7 @@ void bmp_write_clean(FILE* file, struct bmp_file* bmp_file);
 
 int bmp_allocate_data(struct pixel_data** data_ptr, int32_t width, int32_t height);
 
-struct pixel_data bmp_median(const struct bmp_file* bmp_file, int32_t x, int32_t y);
-
-int bmp_asc_comparator(const void* a, const void* b);
-
 int8_t bmp_get_padding_bytes_no(const int32_t bmp_width);
-
-struct pixel_data* bmp_reorganize_for_saving(const struct bmp_file* bmp_file);
 
 uint bmp_width(struct bmp_file* s_bmp_file) {
     return s_bmp_file->s_dib_header.bitmap_width;
