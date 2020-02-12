@@ -1,6 +1,5 @@
 #ifndef BMP_H
 #define BMP_H
-
 #include <sys/types.h>
 
 // BGR24 pixel BMP data model
