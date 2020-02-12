@@ -20,7 +20,7 @@ gcc -o exec main.c file1.c file2.c fileN.c bmplib.a
 ```C
 struct bmp_file test_file;
 
-// Check header file for possible enum states
+// Check header file for possible BMP_ERROR states
 switch(bmp_load("test.bmp", &test_file))
 {
   case BMP_FILE_NULL:
@@ -36,6 +36,44 @@ switch(bmp_save("test_cpy.bmp", &test_file))
 }
 
 bmp_free(&test_file);
+```
+
+#### To create and save files:
+```C
+const unsigned int width = 117, height = 224;
+struct bmp_file fcustom;
+
+// Check header file for possible BMP_ERROR states
+switch(bmp_init(&fcustom, width, height))
+{
+  case 0:
+  puts("All fine");
+  break;
+}
+
+for(int i = 0; i < width; i++)
+{
+  for(int j = 0; j < height; j++)
+  {
+    struct pixel_data black = {0, 0, 0};
+
+    if(i % 2 == 0)
+      bmp_set_pixel_at(&fcustom, &black, j, i);
+            
+    struct pixel_data current = bmp_pixel_at(&fcustom, j, i);
+  }
+}
+
+bmp_negative_filter(&fcustom);
+
+switch(bmp_save("test.bmp", &fcustom))
+{
+  case BMP_FILE_NULL:
+  perror("Couldn't create BMP file");
+  break;
+}
+
+bmp_free(&fcustom);
 ```
 
 ### Functions and usage:
