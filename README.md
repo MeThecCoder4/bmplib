@@ -2,6 +2,7 @@
 ## A simple BMP library written in C language
 
 Current library version supports 24bits/pixel BMP formats only.
+Note: This library won't work properly with files containing additional color tables and information.
 
 ### Compilation instructions:
 1. Download project files.
