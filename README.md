@@ -14,6 +14,30 @@ make
 ```bash
 gcc -o exec main.c file1.c file2.c fileN.c bmplib.a
 ```
+
+### Fast usage instructions:
+#### To load and save files:
+```C
+struct bmp_file test_file;
+
+// Check header file for possible enum states
+switch(bmp_load("test.bmp", &test_file))
+{
+  case BMP_FILE_NULL:
+  puts("File not found");
+  break;
+}
+
+switch(bmp_save("test_cpy.bmp", &test_file))
+{
+  case BMP_FILE_NULL:
+  perror("Couldn't create BMP file");
+  break;
+}
+
+bmp_free(&test_file);
+```
+
 ### Functions and usage:
 1. `int bmp_load(const char* file_name, struct bmp_file* s_bmp_file)` - Use this function to load BMP file from disk.
 A structure does not need to be initialized by `bmp_init()` first.
