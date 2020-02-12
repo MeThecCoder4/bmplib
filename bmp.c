@@ -179,6 +179,12 @@ void bmp_set_pixel_at(struct bmp_file* bmp_file, struct pixel_data* new_pixel, i
 }
 
 int bmp_init(struct bmp_file* bmp_file, int32_t width, int32_t height) {
+    if(bmp_file == NULL)
+        return BMP_NULL_STRUCT;
+
+    if(width <= 0 || height <= 0)
+        return BHE_SIZE_ZERO;
+
     memset(bmp_file, 0, sizeof(struct bmp_file));
 
     if(bmp_allocate_data(&bmp_file->data, width, height))
