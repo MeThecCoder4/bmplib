@@ -51,9 +51,9 @@ switch(bmp_init(&fcustom, width, height))
   break;
 }
 
-for(int i = 0; i < width; i++)
+for(int i = 0; i < height; i++)
 {
-  for(int j = 0; j < height; j++)
+  for(int j = 0; j < width; j++)
   {
     struct pixel_data black = {0, 0, 0};
 
