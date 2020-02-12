@@ -190,6 +190,7 @@ int bmp_init(struct bmp_file* bmp_file, int32_t width, int32_t height) {
     if(bmp_allocate_data(&bmp_file->data, width, height))
         return BMP_MEMERROR;
 
+    memset(bmp_file->data, 0xff, sizeof(struct pixel_data) * width * height);
     bmp_file->s_dib_header.bitmap_width = width;
     bmp_file->s_dib_header.bitmap_height = height;
     return 0;
