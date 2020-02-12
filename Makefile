@@ -1,8 +1,13 @@
-bmplib.a: bmp.o
-	ar rs bmplib.a bmp.o
+CC = gcc
+DEPS = bmp.h
+SOURCE = bmp.c
+OBJ = bmp.o
 
-bmp.o: bmp.c
-	gcc -Wall -c bmp.c
+bmplib.a: $(OBJ)
+	ar rs bmplib.a $(OBJ)
+
+$(OBJ): $(SOURCE) $(DEPS)
+	$(CC) -Wall -c $(SOURCE)
 
 clean: 
-	rm bmp.o bmplib.a
+	rm $(OBJ) bmplib.a
